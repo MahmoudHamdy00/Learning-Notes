@@ -8,7 +8,7 @@
 2. add DB Context
    - Install-Package add `Microsoft.EntityFrameWorkCore`
    - add AppDbContect inherits from `DbContext`
-   - create a ctor with `DbContectOptions<AppDbContext> options ` and path it to the base ctor
+   - create a ctor with `DbContectOptions<AppDbContext> options` and path it to the base ctor
    - define the table names (`DbSet<ModelName>TableName{get,set};`
    - add connection string in the `appsettings.json` -> `ConnectionStrings":{"default":""}`
      - Install-Package add `Microsoft.EntityFrameWorkCore.SqlServer`
@@ -16,7 +16,7 @@
      - declare a string to store the conn string and in the ctor initialize it with the value (`Configration.getConnectionString("default")`
      - in the `ConfigureServices` method (`services.ddDbContext<DbNameContect>(options =>options.UseSqlServer(connString));`
    - in the program.cs (.Net 6)
-     - declare a string to store the conn string and initialize it with the value (`builder.Configration.getConnectionString("default")` -` builder.services.addDbContext<DbNameContect>(options =>options.UseSqlServer(connString);`
+     - declare a string to store the conn string and initialize it with the value (`builder.Configration.getConnectionString("default")` -`builder.services.addDbContext<DbNameContect>(options =>options.UseSqlServer(connString);`
      - `builder.services.adddatabasedeveloperpageexceptionfilter()`
 
 ### Relations
@@ -34,9 +34,13 @@
 - Seeding
   - create a class (AppDbInitializer)
   - create a function `Seed` that takes IApplicationBuilder as an argument
-  - get the context by` ``` using (var serviceScope = applicationBuilder.ApplicationServices.CreateScope())` {
-    var context = serviceScope.ServiceProvider.GetService<AppDbContext>();
+  - get the context by
+
+  ```C#
+  using (var serviceScope = applicationBuilder.ApplicationServices.CreateScope())` {
+  var context = serviceScope.ServiceProvider.GetService<AppDbContext>();
     if (!context.Books.Any()) context.Books.add?range?(......)
+  ```
 
 ## Controllers
 
@@ -81,6 +85,7 @@ authorsNames = book.book_Authors.Select(y => y.author.name).ToList(),
 
 - create errorVM Model
 - create a static class exceptionMiddlewareExtentions
+
 -
 -
 -
@@ -89,8 +94,8 @@ authorsNames = book.book_Authors.Select(y => y.author.name).ToList(),
 ## Return types
 
 - Specific type
-- IActionResult
-- IActionResult<T>
+- `IActionResult`
+- `IActionResult<T>`
 - Custom return type
 
 ## Data Sorting, Filtering, and Paging
@@ -101,12 +106,12 @@ authorsNames = book.book_Authors.Select(y => y.author.name).ToList(),
   - list.where(n=>n.name.contains("be7a")).toList();
 - Paging
 
-  - add paginated<T> class
-  - IQueryable<T> source
-    _items = source.Skip((pageIndex - 1) _ pageSize).Take(pageSize).ToList();
-    _return new PaginatedList<T>(items/_, count, pageIndex, pageSize\*/);
+  - add `paginated<T>` class
+  - `IQueryable<T>` source
+  -`items = source.Skip((pageIndex - 1) _ pageSize).Take(pageSize).ToList();`
+  - `return new PaginatedList<T>(items/_, count, pageIndex, pageSize\*/);`
 
-  - this.AddRange(items); (in the ctor)
+  - `this.AddRange(items);` (in the ctor)
 
 ## Web Api Versioning
 
@@ -140,7 +145,7 @@ authorsNames = book.book_Authors.Select(y => y.author.name).ToList(),
   - //builder.Host.UseSerilog((ctx, lc) => lc.WriteTo.File("Logs/log.txt",rollingInterval:RollingInterval.Day));
     \*{ var configuration = new ConfigurationBuilder().AddJsonFile("appsettings.json").Build();builder.Host.UseSerilog((ctx, lc) => lc.ReadFrom.Configuration(configuration));}
 
-  ```
+  ```json
   "Serilog": {
     "MinimumLevel": {
       "Default": "Information",
@@ -185,12 +190,12 @@ authorsNames = book.book_Authors.Select(y => y.author.name).ToList(),
 - install inmemory package
 - In unittest.cs
 
-```
-	private static DbContextOptions<AppDbContext> dbContextOptions = new DbContextOptionsBuilder<AppDbContext>()
+```C#
+ private static DbContextOptions<AppDbContext> dbContextOptions = new DbContextOptionsBuilder<AppDbContext>()
           .UseInMemoryDatabase(databaseName: "BookDbTest")
           .Options;
-	AppDbContext dbContext;
-	[OneTimeSetUp]
+ AppDbContext dbContext;
+ [OneTimeSetUp]
       public void Setup()
       {
           dbContext = new AppDbContext(dbContextOptions);
@@ -200,8 +205,8 @@ authorsNames = book.book_Authors.Select(y => y.author.name).ToList(),
       [Test]
       public void Test1()
       {
-		var resalt=lld
-		Assert.That(resalt,Is.Equal());
+  var resalt=lld
+  Assert.That(resalt,Is.Equal());
       }
 
       [OneTimeTearDown]
