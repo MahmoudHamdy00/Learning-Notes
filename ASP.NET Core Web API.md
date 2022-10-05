@@ -220,3 +220,177 @@ authorsNames = book.book_Authors.Select(y => y.author.name).ToList(),
           //add some data
       }
 ```
+
+## Authuntication
+
+- install `Microsoft.AspNetCore.Identity.EntityFrameworkCore`
+- create `ApplicationUser` class ad extend it with `IdentityUser` and add in it the neaded extra attriputes;
+- extend `dpcontext` from `IdentityDbContext<ApplicationUser>` insted of `dpContext`
+- add
+
+```C#
+
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
+```
+- add migration 
+
+- add acountrepository and its interface and add it to services
+- inject UserManager<AppUser> 
+- add acountcontroller and inject the acountrepo
+### signup
+- add signup model
+- create singup method 
+- new appuser ,give it name and data without pass
+- usermanager.createasync(user,pass,rememper,lockout);
+- crreate sign up in controller
+
+
+### login
+
+- Microsoft.AspNetCore.Authentication.JwtBearer
+
+appsettings 
+```c#
+"JWT": {
+    "ValidAudience": "User",
+    "ValidIssuer": "https://localhost:xxxxx",
+    "Secret": "ThisIsMySecureKey12345678"
+  }
+```
+
+```C#
+
+builder.Services.AddAuthentication(option =>
+{
+    option.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    option.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    option.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+                .AddJwtBearer(option =>
+                {
+                    option.SaveToken = true;
+                    option.RequireHttpsMetadata = false;
+                    option.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters()
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidAudience = builder.Configuration["JWT:ValidAudience"],
+                        ValidIssuer = builder.Configuration["JWT:ValidIssuer"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JWT:Secret"]))
+                    };
+                });
+```
+
+- in account add inject `SignInManager<ApplicationUser>` and `IConfiguration`
+
+```C#
+using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using My_Books.Data.Models;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+
+namespace My_Books.Repository
+{
+    public class AccountRepository : IAccountRepository
+    {
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IConfiguration _configuration;
+
+        public AccountRepository(UserManager<ApplicationUser> userManager,SignInManager<ApplicationUser>signInManager,IConfiguration configuration)
+        {
+            _userManager = userManager;
+            _signInManager = signInManager;
+            _configuration = configuration;
+        }
+        public async Task<IdentityResult> SignUpAsync(SignUpModel user)
+        {
+            var AppUser = new ApplicationUser
+            {
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                UserName = user.UserName
+            };
+            return await _userManager.CreateAsync(AppUser, user.Password);
+        }
+        public async Task<string> LoginAsync(SignInModel signInModel)
+        {
+            var result = await _signInManager.PasswordSignInAsync(signInModel.UserName, signInModel.Password, false, false);
+
+            if (!result.Succeeded)
+            {
+                return null;
+            }
+
+            var authClaims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, signInModel.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+            var authSigninKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(_configuration["JWT:Secret"]));
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["JWT:ValidIssuer"],
+                audience: _configuration["JWT:ValidAudience"],
+                expires: DateTime.Now.AddDays(1),
+                claims: authClaims,
+                signingCredentials: new SigningCredentials(authSigninKey, SecurityAlgorithms.HmacSha256Signature)
+                );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+    }
+}
+```
+
+
+```C#
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using My_Books.Data.Models;
+using My_Books.Repository;
+
+namespace My_Books.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AccountController : ControllerBase
+    {
+        private readonly IAccountRepository _accountRepository;
+
+        public AccountController(IAccountRepository accountRepository)
+        {
+            _accountRepository = accountRepository;
+        }
+        [HttpPost("signup")]
+        public async Task<IActionResult> SignUp([FromBody] SignUpModel signUpModel)
+        {
+            var result = await _accountRepository.SignUpAsync(signUpModel);
+            if (!result.Succeeded)
+            {
+                return Unauthorized(result.Errors);
+            }
+            return Ok(result.Succeeded);
+        }
+        [HttpPost("login")]
+        public async Task<IActionResult> Login([FromBody] SignInModel signInModel)
+        {
+            var result = await _accountRepository.LoginAsync(signInModel);
+
+            if (string.IsNullOrEmpty(result))
+            {
+                return Unauthorized();
+            }
+
+            return Ok(result);
+        }
+
+    }
+}
+```
